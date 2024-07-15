@@ -1,46 +1,45 @@
 package com.abutua.productbackend.resources;
 
 import java.net.URI;
-import java.util.ArrayList;
-//import java.util.Arrays;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import com.abutua.productbackend.models.Category;
 import com.abutua.productbackend.models.Product;
-
-//import jakarta.annotation.PostConstruct;
+import com.abutua.productbackend.repositories.CategoryRepository;
+import com.abutua.productbackend.repositories.ProductRepository;
 
 @RestController
 @CrossOrigin
 public class ProductController {
 
-  private List<Product> products = new ArrayList<>(); // Usado com o init(antes) //retomou esse método para a lista guardar novos produtos
+  // injetando dependencias
+  @Autowired
+  private ProductRepository productRepository;
 
-  //criando a lista pelo atributo
-  // private List<Product> products = Arrays.asList( //nesse metodo o Arrays.asList() não permite aumentar o conteudo guardado
-  //   new Product(1, "product01", "description 1", 100.5, 1, true, true),
-  //   new Product(2, "product02", "description 2", 200.5, 2, true, false),
-  //   new Product(3, "product03", "description 3", 300.5, 3, false, true),
-  //   new Product(4, "product04", "description 4", 400.5, 4, true, false)
-  // );
+  @Autowired
+  private CategoryRepository categoryRepository;
 
-  //criando metodo de salvar o produto
+  // salvar um produto
   @PostMapping("products")
   public ResponseEntity<Product> save(@RequestBody Product product){
-    product.setId(products.size()+1);
-    products.add(product);
 
-    //gerando o URI para o location - criando o produto
+    product = productRepository.save(product);
+
+    // gerando o URI para o location - criando o produto
     URI location = ServletUriComponentsBuilder
       .fromCurrentRequest()
       .path("/{id}")
@@ -50,37 +49,53 @@ public class ProductController {
     return ResponseEntity.created(location).body(product);
   }
 
-  // @PostConstruct // > Usado pra criar os produtos e adicionar na lista usando o init (descartado)
-  // public void init() {
-  //   Product p1 = ;
-  //   Product p2 = ;
-  //   Product p3 = ;
-  //   products.add(p1);
-  //   products.add(p2);
-  //   products.add(p3);
-  // }
-
+  // buscar um produto
   @GetMapping("products/{id}")
-  public ResponseEntity<Product> getProduct(@PathVariable int id) {
+  public ResponseEntity<Product> getProduct(@PathVariable int id) {  
+    Product product = productRepository.findById(id)
+      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
 
-    // if( id <= products.size()) { // > forma tradicional de verificar a validade..
-    // return ResponseEntity.ok(products.get(id-1));
-    // }
-    // else {
-    // throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Product not found");
-    // }
-
-    // mesma coisa q o código anterior, de forma mais atualizada..
-    Product prod = products.stream()          // cria um stream, um tipo de lista, acha o primeiro e filtra - ou trata o erro
-                            .findFirst()
-                            .filter(p -> p.getId() == id) 
-                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
-
-    return ResponseEntity.ok(prod);
+    return ResponseEntity.ok(product);
   }
 
+  // buscar todos os produtos
   @GetMapping("products")
   public List<Product> getProducts() {
-    return products;
+    return productRepository.findAll();
+  }
+  
+  // remover um produto
+  @DeleteMapping("products/{id}")
+  public ResponseEntity<Product> deleteProduct(@PathVariable int id) {  
+    Product product = productRepository.findById(id)
+      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
+    productRepository.delete(product);
+
+    return ResponseEntity.noContent().build();
+  }
+
+  // atualizar um produto
+  @PutMapping("products/{id}")
+  public ResponseEntity<Product> updateProduct(@PathVariable int id, @RequestBody Product productUpdate) {  
+    Product product = productRepository.findById(id)
+      .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Product not found"));
+
+    if(productUpdate.getCategory() == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category can not be empty");
+    }
+
+    Category category = categoryRepository.findById(productUpdate.getCategory().getId())
+      .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category not found"));
+
+    product.setName(productUpdate.getName());
+    product.setDescription(productUpdate.getDescription());
+    product.setPrice(productUpdate.getPrice());
+    product.setPromotion(productUpdate.isPromotion());
+    product.setNewProduct(productUpdate.isNewProduct());
+    product.setCategory(category);
+
+    productRepository.save(product);
+
+    return ResponseEntity.ok().build();
   }
 }
