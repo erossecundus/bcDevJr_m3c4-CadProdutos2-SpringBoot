@@ -15,6 +15,7 @@ public class Product {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private int id;
+
   private String name;
   private String description;
   private double price;
@@ -24,10 +25,9 @@ public class Product {
 
   private boolean promotion;
   private boolean newProduct;
-
-  // metodos construtores
   
 
+  // metodos construtores
   public Product(int id, String name, String description, double price, Category category, boolean promotion, boolean newProduct){
     this.id = id;
     this.name = name;
